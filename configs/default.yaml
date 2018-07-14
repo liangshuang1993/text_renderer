@@ -1,26 +1,16 @@
 # Small font_size will make text looks like blured/prydown
 font_size:
-  min: 15
-  max: 30
+  min: 20
+  max: 40
 
 # By default, text is drawed by Pillow with (https://stackoverflow.com/questions/43828955/measuring-width-of-text-python-pil)
-# If `random_space` is enabled, some text will be drawed char by char with a random space
+# If this is enabled, some text will be drawed char by char with a random space
 random_space:
-  enable: false
+  enable: true
   fraction: 0.3
   min: -0.1 # -0.1 will make chars very close or even overlapped
   max: 0.1
 
-# By default, text is darker than background.
-# If `reverse_color` is enabled, some images will have dark background and light text
-reverse_color:
-  enable: false
-  fraction: 0.5
-
-# Use image in bg_dir as background for text
-img_bg:
-  enable: true
-  fraction: 0.5
 
 perspective_transform:
   max_x: 25
@@ -28,13 +18,13 @@ perspective_transform:
   max_z: 3
 
 blur:
-  enable: true
-  fraction: 0.03
+  enable: false
+  fraction: 0.5 # by LS original is 0.03
 
 # If an image is applied blur, it will not be applied prydown
 prydown:
   enable: true
-  fraction: 0.03
+  fraction: 0.8 # by LS original is 0.03
   max_scale: 1.5 # Image will first resize to 1.5x, and than resize to 1x
 
 noise:

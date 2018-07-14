@@ -77,10 +77,6 @@ class Renderer(object):
                 word_img = self.apply_prydown(word_img)
 
         word_img = np.clip(word_img, 0., 255.)
-
-        if apply(self.cfg.reverse_color):
-            word_img = self.reverse_img(word_img)
-
         return word_img, word
 
     def random_xy_offset(self, src_height, src_width, dst_height, dst_width):
@@ -154,22 +150,6 @@ class Renderer(object):
 
         return dst, dst_bbox
 
-    def get_word_color(self, bg, text_x, text_y, word_height, word_width):
-        """
-        Only use word roi area to get word color
-        """
-        offset = 10
-        ymin = text_y - offset
-        ymax = text_y + word_height + offset
-        xmin = text_x - offset
-        xmax = text_x + word_width + offset
-
-        word_roi_bg = bg[ymin: ymax, xmin: xmax]
-
-        bg_mean = int(np.mean(word_roi_bg) * (2 / 3))
-        word_color = random.randint(0, bg_mean)
-        return word_color
-
     def draw_text_on_bg(self, word, font, bg):
         """
         Draw word in the center of background
@@ -180,6 +160,10 @@ class Renderer(object):
             np_img: word image
             text_box_pnts: left-top, right-top, right-bottom, left-bottom
         """
+        if '~' in word:
+            font_size = random.randint(self.cfg.font_size.min, self.cfg.font_size.max)
+            font = ImageFont.truetype('data/fonts/eng/Hack-Regular.ttf', font_size)     
+ 
         bg_height = bg.shape[0]
         bg_width = bg.shape[1]
 
@@ -196,7 +180,8 @@ class Renderer(object):
         text_x = int((bg_width - word_width) / 2)
         text_y = int((bg_height - word_height) / 2)
 
-        word_color = self.get_word_color(bg, text_x, text_y, word_height, word_width)
+        bg_mean = int(np.mean(bg))
+        word_color = random.randint(0, int(bg_mean / 3 * 2))
 
         if apply(self.cfg.random_space):
             text_x, text_y, word_width, word_height = self.draw_text_with_random_space(draw, font, word, word_color,
@@ -253,10 +238,10 @@ class Renderer(object):
         return text_x, text_y, width, height
 
     def gen_bg(self, width, height):
-        if apply(self.cfg.img_bg):
-            bg = self.gen_bg_from_image(int(width), int(height))
-        else:
+        if prob(0.5):
             bg = self.gen_rand_bg(int(width), int(height))
+        else:
+            bg = self.gen_bg_from_image(int(width), int(height))
         return bg
 
     def gen_rand_bg(self, width, height):
@@ -359,8 +344,6 @@ class Renderer(object):
         y = math_utils.cliped_rand_norm(0, max_y)
         z = math_utils.cliped_rand_norm(0, max_z)
 
-        # print("x: %f, y: %f, z: %f" % (x, y, z))
-
         transformer = math_utils.PerspectiveTransform(x, y, z, scale=1.0, fovy=50)
 
         dst_img, M33, dst_img_pnts = transformer.transform_image(img, gpu)
@@ -377,19 +360,22 @@ class Renderer(object):
     def apply_gauss_blur(self, img, ks=None):
         if ks is None:
             ks = [7, 9, 11, 13]
-        ksize = random.choice(ks)
-
+        ksize1 = random.choice(ks)
+        ksize2 = random.choice(ks)
         sigmas = [0, 1, 2, 3, 4, 5, 6, 7]
         sigma = 0
-        if ksize <= 3:
+        if ksize1 <= 3:
             sigma = random.choice(sigmas)
-        img = cv2.GaussianBlur(img, (ksize, ksize), sigma)
+        img = cv2.GaussianBlur(img, (ksize1, ksize2), sigma)
+        #img = cv2.blur(img, (ksize1, ksize2))
         return img
 
     def apply_norm_blur(self, img, ks=None):
         # kernel == 1, the output image will be the same
         if ks is None:
             ks = [2, 3]
+            # by LS
+            # ks = [2, 3, 4, 5]
         kernel = random.choice(ks)
         img = cv2.blur(img, (kernel, kernel))
         return img
@@ -404,7 +390,3 @@ class Renderer(object):
 
         out = cv2.resize(img, (int(width / scale), int(height / scale)), interpolation=cv2.INTER_AREA)
         return cv2.resize(out, (width, height), interpolation=cv2.INTER_AREA)
-
-    def reverse_img(self, word_img):
-        offset = np.random.randint(-10, 10)
-        return 255 + offset - word_img
