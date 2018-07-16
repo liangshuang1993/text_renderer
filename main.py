@@ -11,6 +11,7 @@ from itertools import repeat
 import os
 
 import cv2
+from PIL import Image, ImageEnhance
 
 from libs.config import load_config
 from libs.timer import Timer
@@ -20,6 +21,7 @@ import libs.font_utils as font_utils
 from textrenderer.corpus import RandomCorpus, ChnCorpus, EngCorpus
 from textrenderer.renderer import Renderer
 from tenacity import retry
+import motionBlur
 
 lock = mp.Lock()
 counter = mp.Value('i', 0)
@@ -87,11 +89,22 @@ def generate_img(img_index, q):
 
     im, word = gen_img_retry(renderer)
 
+    #brightness
+    a = np.random.choice((0.5, 0.8, 1, 1.2))
+    b = np.random.choice((-30, -10, 10, 30))
+    rows, cols = im.shape
+    im = np.uint8(np.clip((a * im + b), 0, 255))
+
+    ks = [2, 3, 5, 7]
+    angle = [-120, -60, -30, 10, 30, 60, 120]
+    kernel, anchor = motionBlur.genaratePsf(np.random.choice(ks),np.random.choice(angle))
+    motion_blur=cv2.filter2D(im,-1,kernel,anchor=anchor)
+
     base_name = '{:08d}'.format(img_index)
 
     if not flags.viz:
         fname = os.path.join(flags.save_dir, base_name + '.jpg')
-        cv2.imwrite(fname, im)
+        cv2.imwrite(fname, motion_blur)
 
         label = "{} {}".format(base_name, word)
         q.put(label)
